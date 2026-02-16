@@ -39,4 +39,5 @@ export interface RandomizerSettings {
     preventRedClustering: boolean;
     maxTouchingSameNumbers: number; // 0-3
     maxTouchingSameResources: number; // 0-3
+    harborPlacement: 'random' | 'balanced';
 }
