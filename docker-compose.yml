@@ -1,0 +1,16 @@
+services:
+  app:
+    image: ghcr.io/azsumtoshko/catan-helper:latest
+    container_name: catan-helper
+    ports:
+      - "8282:8282"
+    restart: unless-stopped
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Check for updates every 300 seconds (5 minutes) and remove old images
+    command: --interval 300 --cleanup
+    restart: unless-stopped
