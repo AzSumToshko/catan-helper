@@ -1,24 +1,70 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useGameStore } from '../store/gameStore';
+import { Lobby } from '../components/trading/Lobby';
+import { ActiveGame } from '../components/trading/ActiveGame';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import LanguageSelector from '../components/LanguageSelector'; // Importing LanguageSelector
+import { useTranslation } from 'react-i18next';
 
 const Trading: React.FC = () => {
+    const { isConnected, connect, room, player } = useGameStore();
+    const navigate = useNavigate();
     const { t } = useTranslation();
 
-    return (
-        <div className="flex flex-col h-full">
-            <div className="mb-6">
-                <Link to="/" className="inline-flex items-center text-gray-400 hover:text-white transition-colors">
-                    <ArrowLeft size={20} className="mr-1" />
-                    {t('back')}
-                </Link>
-            </div>
+    useEffect(() => {
+        connect();
+    }, [connect]);
 
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-white/10 rounded-xl bg-white/5">
-                <h2 className="text-2xl font-bold mb-2 text-catan-water">{t('trading')}</h2>
-                <p className="text-gray-400">Implementation coming soon...</p>
+    if (!isConnected) {
+        return (
+            <div className="min-h-screen w-screen bg-slate-900 flex items-center justify-center text-white relative">
+                {/* Background sea overlay */}
+                <div className="fixed inset-0 pointer-events-none opacity-40 bg-[url('/fields/sea.png')] bg-center z-0" style={{ backgroundSize: '300%' }}></div>
+
+                <div className="animate-pulse relative z-10">{t('connecting')}</div>
+                <button
+                    onClick={() => navigate('/')}
+                    className="fixed top-4 left-4 z-[100] p-2 bg-neutral-800/80 backdrop-blur text-gray-200 hover:text-white rounded-lg border border-white/10 shadow-lg transition-all flex items-center justify-center cursor-pointer"
+                    aria-label="Back to Home"
+                >
+                    <ArrowLeft size={24} />
+                </button>
+                <div className="fixed top-4 right-4 z-[100]">
+                    <LanguageSelector />
+                </div>
             </div>
+        );
+    }
+
+    if (!room || !player) {
+        return (
+            <div className="min-h-screen w-screen bg-slate-900 p-4 flex items-center justify-center relative">
+                {/* Background sea overlay */}
+                <div className="fixed inset-0 pointer-events-none opacity-40 bg-[url('/fields/sea.png')] bg-center z-0" style={{ backgroundSize: '300%' }}></div>
+
+                <button
+                    onClick={() => navigate('/')}
+                    className="fixed top-4 left-4 z-[100] p-2 bg-neutral-800/80 backdrop-blur text-gray-200 hover:text-white rounded-lg border border-white/10 shadow-lg transition-all flex items-center justify-center cursor-pointer"
+                    aria-label="Back to Home"
+                >
+                    <ArrowLeft size={24} />
+                </button>
+                <div className="fixed top-4 right-4 z-[100]">
+                    <LanguageSelector />
+                </div>
+                <div className="relative z-10 w-full max-w-md">
+                    <Lobby />
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="relative w-full h-full bg-slate-900">
+            {/* Background sea overlay */}
+            <div className="fixed inset-0 pointer-events-none opacity-20 bg-[url('/fields/sea.png')] bg-center z-0" style={{ backgroundSize: '300%' }}></div>
+            <ActiveGame />
         </div>
     );
 };

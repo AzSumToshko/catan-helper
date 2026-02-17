@@ -12,10 +12,10 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="randomizer" element={<Randomizer />} />
-          <Route path="trading" element={<Trading />} />
         </Route>
+        <Route path="trading" element={<Trading />} />
       </Routes>
-    </BrowserRouter>
+    </BrowserRouter >
   );
 }
 

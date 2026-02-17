@@ -1,8 +1,13 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Globe } from 'lucide-react';
+import { clsx } from 'clsx';
 
-const LanguageSelector: React.FC = () => {
+interface LanguageSelectorProps {
+    className?: string;
+}
+
+const LanguageSelector: React.FC<LanguageSelectorProps> = ({ className }) => {
     const { i18n } = useTranslation();
 
     const toggleLanguage = () => {
@@ -13,7 +18,10 @@ const LanguageSelector: React.FC = () => {
     return (
         <button
             onClick={toggleLanguage}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-catan-wheat border border-catan-wood/30"
+            className={clsx(
+                "flex items-center gap-2 px-3 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-catan-wheat border border-catan-wood/30 justify-center",
+                className
+            )}
             aria-label="Toggle Language"
         >
             <Globe size={18} />
