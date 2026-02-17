@@ -31,6 +31,8 @@ export interface HexConfig {
     terrain: TerrainType;
     numberToken?: NumberToken;
     harbor?: HarborType;
+    harborRotation?: number;
+    harborOnLand?: boolean;
 }
 
 export interface RandomizerSettings {

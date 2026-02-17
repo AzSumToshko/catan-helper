@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, Settings2, Check, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Hex from '../components/Hex';
 import type { HexConfig, RandomizerSettings } from '../types';
@@ -10,6 +10,7 @@ import { TerrainType } from '../types';
 
 const Randomizer: React.FC = () => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const [mapData, setMapData] = useState<HexConfig[]>([]);
     const [settings, setSettings] = useState<RandomizerSettings>({
         islands: 1,
@@ -45,6 +46,7 @@ const Randomizer: React.FC = () => {
     const [tokenScale, setTokenScale] = useState(0.6); // Standard size tokens
     const [verOffset, setVerOffset] = useState(-0); // Shift up slightly
     const [horOffset, setHorOffset] = useState(0);
+    const [harborScale, setHarborScale] = useState(60);
 
     // Helper to update settings
     const updateSetting = (key: keyof RandomizerSettings, value: any) => {
@@ -64,18 +66,18 @@ const Randomizer: React.FC = () => {
     return (
         <div className="flex flex-col h-full bg-neutral-900 overflow-hidden relative">
             {/* Custom Back Button */}
-            <Link
-                to="/"
-                className="fixed top-4 left-4 z-[60] p-2 bg-neutral-800/80 backdrop-blur text-gray-200 hover:text-white rounded-lg border border-white/10 shadow-lg transition-all flex items-center justify-center"
+            <button
+                onClick={() => navigate('/')}
+                className="fixed top-4 left-4 z-[100] p-2 bg-neutral-800/80 backdrop-blur text-gray-200 hover:text-white rounded-lg border border-white/10 shadow-lg transition-all flex items-center justify-center cursor-pointer"
                 aria-label="Back to Home"
             >
                 <ArrowLeft size={24} />
-            </Link>
+            </button>
 
             {/* Display Mode Toggle - Below Back Button */}
             <button
                 onClick={() => setDisplayMode(displayMode === 'overlay' ? 'standalone' : 'overlay')}
-                className="fixed top-[72px] left-4 z-[60] px-4 py-2 bg-neutral-800/80 backdrop-blur text-gray-200 hover:text-white rounded-lg border border-white/10 shadow-lg transition-all flex items-center gap-2 text-sm font-medium"
+                className="fixed top-4 left-16 z-[60] px-4 py-2 bg-neutral-800/80 backdrop-blur text-gray-200 hover:text-white rounded-lg border border-white/10 shadow-lg transition-all flex items-center gap-2 text-sm font-medium"
             >
                 {displayMode === 'overlay' ? (
                     <>
@@ -116,6 +118,7 @@ const Randomizer: React.FC = () => {
                                             config={hex}
                                             size={`${hexSize}%`}
                                             tokenScale={tokenScale}
+                                            harborScale={harborScale}
                                             style={{
                                                 left: `${finalLeft}%`,
                                                 top: `${finalTop}%`,
@@ -172,6 +175,7 @@ const Randomizer: React.FC = () => {
                                         config={hex}
                                         size={`${hexSize}px`}
                                         tokenScale={0.6}
+                                        harborScale={harborScale}
                                         style={{
                                             left: `${pos.left}px`,
                                             top: `${pos.top}px`,
@@ -243,6 +247,15 @@ const Randomizer: React.FC = () => {
                                         type="range" min="0.5" max="1.5" step="0.05"
                                         value={tokenScale}
                                         onChange={(e) => setTokenScale(parseFloat(e.target.value))}
+                                        className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="text-xs text-gray-400">Harbor Scale</label>
+                                    <input
+                                        type="range" min="30" max="100" step="1"
+                                        value={harborScale}
+                                        onChange={(e) => setHarborScale(parseFloat(e.target.value))}
                                         className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
                                     />
                                 </div>

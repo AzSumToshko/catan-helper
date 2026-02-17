@@ -1,5 +1,5 @@
 import { TerrainType } from '../types';
-import type { NumberToken, HexConfig, RandomizerSettings } from '../types';
+import type { NumberToken, HexConfig, RandomizerSettings, HarborType } from '../types';
 import { GAME_DATA } from '../data/gameData';
 import { MAP_SLOTS } from '../data/mapSlots';
 
@@ -477,6 +477,182 @@ export const generateMap = (settings: RandomizerSettings): HexConfig[] => {
                 validHexes![landIdx].numberToken = shuffledTokens[i];
             }
         });
+    }
+
+    // --- Harbor Placement (Updated) ---
+
+    // 1. Identify Islands (Groups of connected Land Hexes)
+    const landHexIndices = validHexes
+        .map((h, i) => (h.terrain !== TerrainType.Sea && h.terrain !== TerrainType.Desert ? i : -1))
+        .filter(i => i !== -1);
+
+    // Union-Find or BFS for components
+    const islandMap = new Map<number, number>(); // hexIndex -> islandId
+    let islandIdCounter = 0;
+    const visitedLand = new Set<number>();
+
+    landHexIndices.forEach(startIdx => {
+        if (!visitedLand.has(startIdx)) {
+            islandIdCounter++;
+            const queue = [startIdx];
+            visitedLand.add(startIdx);
+            islandMap.set(startIdx, islandIdCounter);
+
+            while (queue.length > 0) {
+                const curr = queue.shift()!;
+                const neighbors = ADJACENCY_LIST[curr];
+                neighbors.forEach(nIdx => {
+                    const terrain = validHexes[nIdx].terrain;
+                    if (terrain !== TerrainType.Sea && terrain !== TerrainType.Desert && !visitedLand.has(nIdx)) {
+                        visitedLand.add(nIdx);
+                        islandMap.set(nIdx, islandIdCounter);
+                        queue.push(nIdx);
+                    }
+                });
+            }
+        }
+    });
+
+    const islandIds = Array.from(new Set(islandMap.values()));
+
+    // 2. Identify Candidate Harbor Slots
+    interface HarborSlot {
+        hexIndex: number;
+        landNeighborIndex: number; // The land hex this harbor services
+        isOnLand: boolean;
+        rotation: number;
+        islandId: number;
+    }
+
+    const candidateSlots: HarborSlot[] = [];
+
+    // Helper to get angle in degrees (0-360)
+    const getAngleDegrees = (fromHex: HexConfig, toHex: HexConfig) => {
+        const dy = toHex.r - fromHex.r;
+        const dx = toHex.q - fromHex.q;
+        let angle = Math.atan2(dy, dx) * (180 / Math.PI);
+        return angle;
+    };
+
+    // A. Sea Slots (Harbors on Sea Hexes, pointing to Land)
+    validHexes.forEach((hex, seaIdx) => {
+        if (hex.terrain === TerrainType.Sea) {
+            const neighbors = ADJACENCY_LIST[seaIdx];
+            neighbors.forEach(nIdx => {
+                const nHex = validHexes[nIdx];
+                if (nHex.terrain !== TerrainType.Sea && nHex.terrain !== TerrainType.Desert) {
+                    // It's a land neighbor. This is a slot.
+                    const angleToLand = getAngleDegrees(hex, nHex);
+
+                    candidateSlots.push({
+                        hexIndex: seaIdx,
+                        landNeighborIndex: nIdx,
+                        isOnLand: false,
+                        rotation: angleToLand + 90, // +90 for image orientation (Top=Up)
+                        islandId: islandMap.get(nIdx) || 0
+                    });
+                }
+            });
+        }
+    });
+
+    // B. Border Slots (Harbors on Land Hexes, pointing Inwards)
+    landHexIndices.forEach(landIdx => {
+        const hex = validHexes[landIdx];
+        const neighbors = ADJACENCY_LIST[landIdx];
+
+        // Check 6 directions (0, 60, 120, 180, 240, 300)
+        // If no neighbor matches the direction, it's a border
+        const outputAngles = [0, 60, 120, 180, 240, 300];
+
+        outputAngles.forEach(checkAngle => {
+            // Check if any neighbor aligns with this angle (within tolerance)
+            const hasNeighbor = neighbors.some(nIdx => {
+                const angle = getAngleDegrees(hex, validHexes[nIdx]);
+                // Normalized difference
+                let diff = Math.abs(angle - checkAngle);
+                while (diff > 180) diff = Math.abs(diff - 360);
+                return diff < 30; // 30 deg tolerance
+            });
+
+            if (!hasNeighbor) {
+                // It's a border direction!
+                // We can place a harbor here.
+                // Inwards Direction = checkAngle + 180.
+                // Rotation = Inwards + 90 = (checkAngle + 180) + 90 = checkAngle + 270.
+
+                candidateSlots.push({
+                    hexIndex: landIdx,
+                    landNeighborIndex: landIdx, // Services itself
+                    isOnLand: true,
+                    rotation: checkAngle + 270,
+                    islandId: islandMap.get(landIdx) || 0
+                });
+            }
+        });
+    });
+
+    // 3. Assign Harbors
+    const finalPlacements = new Map<number, HarborType>(); // hexIdx -> type
+    const servicedLandHexes = new Set<number>();
+
+    // Helper for spacing check (prevents adjacent harbors)
+    const isSpacingValid = (hexIndex: number, placements: Map<number, HarborType>) => {
+        const neighbors = ADJACENCY_LIST[hexIndex];
+        return !neighbors.some(nIdx => placements.has(nIdx));
+    };
+
+    // Shuffle slots for randomness
+    const shuffledSlots = shuffle(candidateSlots);
+
+    // Prepare Harbors
+    const harborTypes: HarborType[] = [];
+    Object.entries(GAME_DATA.counts.harbors).forEach(([type, count]) => {
+        for (let i = 0; i < count; i++) harborTypes.push(type as HarborType);
+    });
+    let availableHarbors = shuffle(harborTypes);
+
+    // Phase 1: Satisfy Islands (Only for Balanced Mode)
+    if (settings.harborPlacement === 'balanced') {
+        islandIds.forEach(id => {
+            if (availableHarbors.length === 0) return;
+
+            // Find a slot for this island that services a fresh land hex AND maintains spacing
+            const slot = shuffledSlots.find(s =>
+                s.islandId === id &&
+                !servicedLandHexes.has(s.landNeighborIndex) &&
+                !finalPlacements.has(s.hexIndex) &&
+                isSpacingValid(s.hexIndex, finalPlacements)
+            );
+
+            if (slot) {
+                const harbor = availableHarbors.pop()!;
+                finalPlacements.set(slot.hexIndex, harbor);
+                servicedLandHexes.add(slot.landNeighborIndex);
+
+                // Apply to Hex
+                validHexes[slot.hexIndex].harbor = harbor;
+                validHexes[slot.hexIndex].harborRotation = slot.rotation;
+                validHexes[slot.hexIndex].harborOnLand = slot.isOnLand;
+            }
+        });
+    }
+
+    // Phase 2: Place remaining harbors
+    for (const slot of shuffledSlots) {
+        if (availableHarbors.length === 0) break;
+
+        if (finalPlacements.has(slot.hexIndex)) continue; // Already occupied
+        if (servicedLandHexes.has(slot.landNeighborIndex)) continue; // Land hex already serviced
+        if (!isSpacingValid(slot.hexIndex, finalPlacements)) continue; // Too close to another harbor
+
+        const harbor = availableHarbors.pop()!;
+        finalPlacements.set(slot.hexIndex, harbor);
+        servicedLandHexes.add(slot.landNeighborIndex);
+
+        validHexes[slot.hexIndex].harbor = harbor;
+        validHexes[slot.hexIndex].harborRotation = slot.rotation;
+        validHexes[slot.hexIndex].harborOnLand = slot.isOnLand;
     }
 
     return validHexes;
