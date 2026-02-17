@@ -130,50 +130,48 @@ const Randomizer: React.FC = () => {
                     </div>
                 ) : (
                     /* Standalone Mode: Static hex grid without board */
-                    <div className="relative w-full h-full flex items-center justify-center p-8">
-                        <div className="relative" style={{ width: '550px', height: '480px' }}>
+                    <div className="relative w-full h-full flex items-start justify-start pb-8 pl-1">
+                        <div className="relative scale-[0.7] sm:scale-85 md:scale-95 lg:scale-100" style={{ width: 'auto', height: '380px' }}>
                             {mapData.map((hex, index) => {
-                                // Static hexagonal grid layout for standard Catan (19 hexes)
-                                // Hex size: 90px, vertical spacing: 78px, horizontal spacing: 95px
-                                const hexSize = 90;
-                                const verticalSpacing = 78;
-                                const horizontalSpacing = 95;
+                                // Static hexagonal grid layout matching the 5-6-7-6-7-6-5 pattern
+                                // This matches the MAP_SLOTS order from mapSlots.ts
+                                const hexSize = 77;
+                                const horizontalSpacing = 80;
+                                const verticalSpacing = 63;
 
-                                const positions = [
-                                    // Row 0 (top, 3 hexes) - centered
-                                    { left: 1.5 * horizontalSpacing, top: 0 },
-                                    { left: 2.5 * horizontalSpacing, top: 0 },
-                                    { left: 3.5 * horizontalSpacing, top: 0 },
-                                    // Row 1 (4 hexes)
-                                    { left: 1 * horizontalSpacing, top: 1 * verticalSpacing },
-                                    { left: 2 * horizontalSpacing, top: 1 * verticalSpacing },
-                                    { left: 3 * horizontalSpacing, top: 1 * verticalSpacing },
-                                    { left: 4 * horizontalSpacing, top: 1 * verticalSpacing },
-                                    // Row 2 (5 hexes - middle)
-                                    { left: 0.5 * horizontalSpacing, top: 2 * verticalSpacing },
-                                    { left: 1.5 * horizontalSpacing, top: 2 * verticalSpacing },
-                                    { left: 2.5 * horizontalSpacing, top: 2 * verticalSpacing },
-                                    { left: 3.5 * horizontalSpacing, top: 2 * verticalSpacing },
-                                    { left: 4.5 * horizontalSpacing, top: 2 * verticalSpacing },
-                                    // Row 3 (4 hexes)
-                                    { left: 1 * horizontalSpacing, top: 3 * verticalSpacing },
-                                    { left: 2 * horizontalSpacing, top: 3 * verticalSpacing },
-                                    { left: 3 * horizontalSpacing, top: 3 * verticalSpacing },
-                                    { left: 4 * horizontalSpacing, top: 3 * verticalSpacing },
-                                    // Row 4 (bottom, 3 hexes) - centered
-                                    { left: 1.5 * horizontalSpacing, top: 4 * verticalSpacing },
-                                    { left: 2.5 * horizontalSpacing, top: 4 * verticalSpacing },
-                                    { left: 3.5 * horizontalSpacing, top: 4 * verticalSpacing }
-                                ];
+                                // Row configuration: [5, 6, 7, 6, 7, 6, 5]
+                                const rowCounts = [5, 6, 7, 6, 7, 6, 5];
 
-                                const pos = positions[index] || { left: 0, top: 0 };
+                                // Calculate which row this hex belongs to
+                                let currentRow = 0;
+                                let indexInRow = index;
+                                let cumulativeCount = 0;
+
+                                for (let r = 0; r < rowCounts.length; r++) {
+                                    if (index < cumulativeCount + rowCounts[r]) {
+                                        currentRow = r;
+                                        indexInRow = index - cumulativeCount;
+                                        break;
+                                    }
+                                    cumulativeCount += rowCounts[r];
+                                }
+
+                                const hexesInRow = rowCounts[currentRow];
+
+                                // Calculate position
+                                // Center the row horizontally
+                                const rowStartX = (7 - hexesInRow) * horizontalSpacing / 2;
+                                const xPos = rowStartX + indexInRow * horizontalSpacing;
+                                const yPos = currentRow * verticalSpacing;
+
+                                const pos = { left: xPos, top: yPos };
 
                                 return (
                                     <Hex
                                         key={index}
                                         config={hex}
                                         size={`${hexSize}px`}
-                                        tokenScale={0.65}
+                                        tokenScale={0.6}
                                         style={{
                                             left: `${pos.left}px`,
                                             top: `${pos.top}px`,
