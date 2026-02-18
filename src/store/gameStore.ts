@@ -66,9 +66,10 @@ export const useGameStore = create<GameState>((set, get) => ({
     connect: () => {
         if (get().socket) return;
 
-        const socket = io('/', {
+        const socket = io('https://helperserver.sdobrinski.cloud/', {
             path: '/socket.io',
             autoConnect: true,
+            transports: ['websocket', 'polling'] // Force transports just in case
         });
 
         socket.on('connect', () => {
