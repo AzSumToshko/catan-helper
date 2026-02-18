@@ -28,7 +28,7 @@ const parseHistory = (entry: string): { text: string; offer?: { type: string; co
 };
 
 export const ActiveGame: React.FC = () => {
-    const { room, players, player, createOffer, history, isConnected, recentResolutions } = useGameStore();
+    const { room, players, createOffer, history, isConnected, recentResolutions } = useGameStore();
     const [mode, setMode] = useState<'give' | 'want'>('give');
     const [give, setGive] = useState<Record<string, number>>({});
     const [want, setWant] = useState<Record<string, number>>({});
