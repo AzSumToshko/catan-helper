@@ -22,25 +22,25 @@ export const ResourcePanel: React.FC<ResourcePanelProps> = ({ onSelect, selected
     const { t } = useTranslation();
 
     return (
-        <div className="w-full mt-4">
-            <div className="flex flex-wrap justify-center gap-y-4 gap-x-2 max-w-lg mx-auto">
+        <div className="w-full">
+            <div className="grid grid-cols-8 gap-1 max-w-lg mx-auto">
                 {RESOURCES.map((res) => (
                     <button
                         key={res.id}
                         onClick={() => onSelect(res.id)}
                         className={clsx(
-                            "relative group transition-all duration-200 flex flex-col items-center w-[18%]",
+                            "relative group transition-all duration-150 flex flex-col items-center",
                             selected === res.id ? "scale-110" : "hover:scale-105"
                         )}
                     >
-                        <div className="w-12 h-18 sm:w-16 sm:h-24 relative">
+                        <div className="w-10 h-14 relative">
                             <img
                                 src={res.img}
                                 alt={t(res.id_key)}
-                                className="w-full h-full object-contain filter drop-shadow-md transition-transform group-hover:-translate-y-1"
+                                className="w-full h-full object-contain filter drop-shadow-md transition-transform group-hover:-translate-y-0.5"
                             />
                         </div>
-                        <span className="text-[10px] sm:text-xs font-medium text-slate-400 mt-1 truncate w-full text-center">
+                        <span className="text-[8px] font-medium text-slate-400 truncate w-full text-center">
                             {t(res.id_key)}
                         </span>
                     </button>

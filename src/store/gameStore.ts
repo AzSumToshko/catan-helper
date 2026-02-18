@@ -9,16 +9,24 @@ interface Player {
 }
 
 interface TradeItem {
-    type: string; // 'wood', 'brick', 'sheep', 'wheat', 'ore'
+    type: string;
     count: number;
 }
 
 interface TradeOffer {
     id: string;
     fromPlayerId: string;
+    fromPlayerName: string;
     offer: TradeItem[];
     want: TradeItem[];
     status: 'pending' | 'accepted' | 'rejected' | 'counter';
+}
+
+interface TradeResolution {
+    type: 'accepted' | 'countered' | 'cancelled';
+    fromPlayerName: string;
+    resolvedBy: string;
+    timestamp: number;
 }
 
 interface GameState {
@@ -29,16 +37,20 @@ interface GameState {
     players: Player[];
     activeTrades: TradeOffer[];
     history: string[];
+    recentResolutions: TradeResolution[];
+    error: string | null;
 
-    // Actions
     connect: () => void;
     createRoom: (name: string, color: Player['color']) => void;
     joinRoom: (pin: string, name: string, color: Player['color']) => void;
     claimTurn: () => void;
     createOffer: (offer: TradeItem[], want: TradeItem[]) => void;
-    respondToOffer: (offerId: string, status: 'accepted' | 'rejected') => void;
+    respondToOffer: (offerId: string, status: 'accepted' | 'rejected' | 'countered') => void;
     leaveRoom: () => void;
+    clearError: () => void;
 }
+
+export type { Player, TradeItem, TradeOffer, TradeResolution };
 
 export const useGameStore = create<GameState>((set, get) => ({
     socket: null,
@@ -48,6 +60,8 @@ export const useGameStore = create<GameState>((set, get) => ({
     players: [],
     activeTrades: [],
     history: [],
+    recentResolutions: [],
+    error: null,
 
     connect: () => {
         if (get().socket) return;
@@ -59,27 +73,64 @@ export const useGameStore = create<GameState>((set, get) => ({
 
         socket.on('connect', () => {
             set({ isConnected: true });
+            const state = get();
+            if (state.room && state.player) {
+                socket.emit('join_room', {
+                    pin: state.room.pin,
+                    name: state.player.name,
+                    color: state.player.color,
+                });
+            }
         });
 
         socket.on('disconnect', () => {
             set({ isConnected: false });
         });
 
-        // Game Events
         socket.on('room_joined', (data) => {
-            set({ room: data.room, player: data.player, players: data.players });
+            set({
+                room: data.room,
+                player: data.player,
+                players: data.players,
+                error: null,
+            });
         });
 
-        socket.on('player_update', (players) => {
-            set({ players });
+        socket.on('player_update', (players: Player[]) => {
+            const currentPlayer = get().player;
+            if (currentPlayer) {
+                const updatedSelf = players.find((p) => p.id === currentPlayer.id);
+                set({ players, player: updatedSelf || currentPlayer });
+            } else {
+                set({ players });
+            }
         });
 
-        socket.on('trade_update', (activeTrades) => {
+        socket.on('trade_update', (activeTrades: TradeOffer[]) => {
             set({ activeTrades });
         });
 
-        socket.on('history_update', (history) => {
+        socket.on('history_update', (history: string[]) => {
             set({ history });
+        });
+
+        socket.on('trade_resolved', (data: { type: 'accepted' | 'countered' | 'cancelled'; fromPlayerName: string; resolvedBy: string }) => {
+            const resolution: TradeResolution = { ...data, timestamp: Date.now() };
+            set(state => ({
+                recentResolutions: [resolution, ...state.recentResolutions].slice(0, 5)
+            }));
+            setTimeout(() => {
+                set(state => ({
+                    recentResolutions: state.recentResolutions.filter(r => Date.now() - r.timestamp < 5000)
+                }));
+            }, 5000);
+        });
+
+        socket.on('error', (message: string) => {
+            set({ error: message });
+            if (get().room && message.toLowerCase().includes('not found')) {
+                set({ room: null, player: null, players: [], activeTrades: [], history: [] });
+            }
         });
 
         set({ socket });
@@ -106,7 +157,11 @@ export const useGameStore = create<GameState>((set, get) => ({
     },
 
     leaveRoom: () => {
-        set({ room: null, player: null, players: [], activeTrades: [], history: [] });
-        // Optional: emit 'leave_room' if server needs strict tracking
-    }
+        get().socket?.emit('leave_room');
+        set({ room: null, player: null, players: [], activeTrades: [], history: [], recentResolutions: [], error: null });
+    },
+
+    clearError: () => {
+        set({ error: null });
+    },
 }));

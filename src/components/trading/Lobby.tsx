@@ -4,7 +4,7 @@ import { clsx } from 'clsx';
 import { useTranslation } from 'react-i18next';
 
 export const Lobby: React.FC = () => {
-    const { createRoom, joinRoom, isConnected } = useGameStore();
+    const { createRoom, joinRoom, isConnected, error, clearError } = useGameStore();
     const [mode, setMode] = useState<'create' | 'join'>('create');
     const [name, setName] = useState('');
     const [pin, setPin] = useState('');
@@ -13,6 +13,7 @@ export const Lobby: React.FC = () => {
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        clearError();
         if (mode === 'create') {
             createRoom(name, color);
         } else {
@@ -34,7 +35,7 @@ export const Lobby: React.FC = () => {
 
             <div className="flex gap-4 mb-6">
                 <button
-                    onClick={() => setMode('create')}
+                    onClick={() => { setMode('create'); clearError(); }}
                     className={clsx(
                         "flex-1 py-2 rounded-lg font-semibold transition-colors",
                         mode === 'create'
@@ -45,7 +46,7 @@ export const Lobby: React.FC = () => {
                     {t('createRoom')}
                 </button>
                 <button
-                    onClick={() => setMode('join')}
+                    onClick={() => { setMode('join'); clearError(); }}
                     className={clsx(
                         "flex-1 py-2 rounded-lg font-semibold transition-colors",
                         mode === 'join'
@@ -106,6 +107,12 @@ export const Lobby: React.FC = () => {
                         ))}
                     </div>
                 </div>
+
+                {error && (
+                    <div className="bg-red-900/50 border border-red-600 text-red-300 px-4 py-2 rounded-lg text-sm text-center">
+                        {error}
+                    </div>
+                )}
 
                 <button
                     type="submit"
